@@ -5,8 +5,9 @@ exports.handler = async (event) => {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
+  const day = String(now.getDate()).padStart(2, '0');
 
-  // Token used by official Kemenag website
+  // Official public token
   const KEMENAG_TOKEN = "af7c667b9819378c0bddb3baede9525b";
 
   try {
@@ -22,14 +23,24 @@ exports.handler = async (event) => {
       body: params,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                 'Accept': 'application/json, text/javascript, */*; q=0.01',
+                                 'Origin': 'https://bimasislam.kemenag.go.id',
                                  'Referer': 'https://bimasislam.kemenag.go.id/jadwalshalat'
       }
     });
 
+    if (!response.ok) {
+      throw new Error(`Kemenag Server returned ${response.status}`);
+    }
+
     const result = await response.json();
-    const todayKey = `${year}-${String(month).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const todayData = result.data[todayKey];
+    const todayKey = `${year}-${String(month).padStart(2, '0')}-${day}`;
+    const todayData = result.data ? result.data[todayKey] : null;
+
+    if (!todayData) {
+      return { statusCode: 404, body: JSON.stringify({ error: "Data not found for today" }) };
+    }
 
     return {
       statusCode: 200,
@@ -40,6 +51,10 @@ exports.handler = async (event) => {
       })
     };
   } catch (error) {
-    return { statusCode: 500, body: JSON.stringify({ error: "Kemenag Timeout" }) };
+    console.error("Internal Error:", error.message);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: "Connection Failed", message: error.message })
+    };
   }
 };
