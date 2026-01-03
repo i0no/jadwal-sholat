@@ -55,17 +55,17 @@ Pastikan Publish directory diarahkan ke folder public.
 
 Set variabel lingkungan (Environment Variable) NODE_VERSION ke 20 atau 22 di panel kontrol Netlify.
 
-### 📝 Catatan Teknis
+## 📝 Catatan Teknis
 Aplikasi ini menggunakan Netlify Functions sebagai bridge (jembatan) untuk menghindari masalah keamanan atau pembatasan akses langsung dari sisi klien.
 
 Pencarian: Menggunakan debounce selama 300ms untuk menghemat kuota pemanggilan API saat pengguna mengetik.
 
 Zona Waktu: Menggunakan getTimezoneOffset() dari browser untuk menentukan label waktu (WIB/WITA/WIT) secara dinamis.
 
-### 🤝 Kontribusi
+## 🤝 Kontribusi
 Kontribusi selalu terbuka! Jika Anda ingin meningkatkan fitur (misalnya: menambahkan notifikasi Adzan atau dukungan multibahasa), silakan lakukan fork dan buat pull request.
 
-### 📄 Lisensi
+## 📄 Lisensi
 Proyek ini dilisensikan di bawah MIT License.
 
 Dibuat dengan ❤️ untuk umat Muslim di Indonesia.
