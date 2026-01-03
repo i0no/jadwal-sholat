@@ -1,29 +1,21 @@
-exports.handler = async (event) => {
-  const cityId = event.queryStringParameters.city || "1301"; // Default: Jakarta
-  const now = new Date();
-  
-  // Format date to YYYY/MM/DD for the API
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+const { format } = require('date-fns'); // CommonJS import for Netlify
 
+exports.handler = async (event) => {
   try {
-    const url = `https://api.myquran.com/v2/sholat/jadwal/${cityId}/${year}/${month}/${day}`;
-    const response = await fetch(url);
-    const result = await response.json();
+    const response = await fetch('https://api.myquran.com/v2/sholat/jadwal/1301/2026/01/03');
+    const data = await response.json();
+    
+    // Using date-fns to format the current server time
+    const fetchTime = format(new Date(), 'HH:mm:ss');
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*"
-      },
-      body: JSON.stringify(result.data)
+      body: JSON.stringify({
+        ...data.data,
+        fetchedAt: fetchTime
+      })
     };
   } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "Failed to fetch data" })
-    };
+    return { statusCode: 500, body: "Error" };
   }
 };
