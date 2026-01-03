@@ -1,5 +1,4 @@
-# 🕋 Jadwal Sholat Indonesia Modern
-
+# 🕋 Sholatdulu
 Aplikasi web responsif untuk memantau jadwal sholat di seluruh kota di Indonesia secara *real-time*. Proyek ini menggunakan arsitektur **Serverless** untuk memastikan performa tinggi dan data yang akurat.
 
 ## ✨ Fitur Unggulan
