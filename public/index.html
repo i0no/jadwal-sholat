@@ -3,38 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jadwal Sholat Indonesia</title>
+    <title>Jadwal Sholat Autocomplete</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #27ae60; --error: #e74c3c; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; margin: 0; }
+        :root { --primary: #2c3e50; --accent: #27ae60; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 40px 20px; margin: 0; }
         .card { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
 
-        .search-container { display: flex; gap: 10px; margin-bottom: 25px; }
-        input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; transition: border-color 0.3s; }
+        .search-container { position: relative; margin-bottom: 25px; }
+        .input-group { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 10px; outline: none; }
         input:focus { border-color: var(--accent); }
         button { padding: 12px 20px; background: var(--accent); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
+
+        /* Suggestions Dropdown */
+        #suggestions {
+            position: absolute; top: 100%; left: 0; right: 85px;
+            background: white; border: 1px solid #eee; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 10; display: none;
+            max-height: 200px; overflow-y: auto;
+        }
+        .suggestion-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f9f9f9; font-size: 0.9rem; }
+        .suggestion-item:hover { background: #f0fdf4; color: var(--accent); }
 
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f9f9f9; padding-bottom: 15px; }
-        .header h1 { margin: 0; font-size: 1.5rem; color: var(--primary); }
-        .header p { margin: 5px 0 0; color: #7f8c8d; font-size: 0.9rem; }
-
-        .time-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f1f1f1; }
-        .time-row:last-child { border-bottom: none; }
-        .label { font-weight: 600; color: #555; text-transform: uppercase; font-size: 0.85rem; }
-        .time { font-weight: 800; color: var(--primary); font-size: 1.1rem; }
-
-        .status-msg { text-align: center; padding: 10px; border-radius: 8px; font-size: 0.9rem; display: none; margin-bottom: 15px; }
-        .error { display: block; background: #fdeaea; color: var(--error); border: 1px solid #fadbd8; }
-        .loading { display: block; background: #eafaf1; color: var(--accent); }
+        .header h1 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+        .time-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f1f1; }
+        .label { font-weight: 600; color: #666; text-transform: uppercase; font-size: 0.8rem; }
+        .time { font-weight: 800; color: var(--primary); }
+        .status-msg { text-align: center; padding: 8px; font-size: 0.85rem; margin-bottom: 10px; display: none; border-radius: 5px; }
+        .error { background: #fdeaea; color: #e74c3c; display: block; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div class="search-container">
-        <input type="text" id="cityInput" placeholder="Masukkan nama kota..." value="Jakarta">
-        <button onclick="searchAndFetch()">CARI</button>
+        <div class="input-group">
+            <input type="text" id="cityInput" placeholder="Ketik nama kota..." autocomplete="off">
+            <button onclick="fetchJadwal(selectedCityId)">CARI</button>
+        </div>
+        <div id="suggestions"></div>
     </div>
 
     <div id="status" class="status-msg"></div>
@@ -42,82 +50,97 @@
     <div id="mainContent" style="display:none;">
         <div class="header">
             <h1 id="cityName">---</h1>
-            <p id="dateDisplay">---</p>
+            <p id="dateDisplay" style="color:#888; font-size:0.9rem;">---</p>
         </div>
-        <div id="prayerTimes">
-            </div>
+        <div id="prayerTimes"></div>
     </div>
 </div>
 
 <script>
-    const statusEl = document.getElementById('status');
-    const contentEl = document.getElementById('mainContent');
+    let selectedCityId = "1301"; // Default Jakarta
+    let debounceTimer;
 
-    function showStatus(msg, type) {
-        statusEl.innerText = msg;
-        statusEl.className = `status-msg ${type}`;
-        statusEl.style.display = 'block';
+    const cityInput = document.getElementById('cityInput');
+    const suggestionsBox = document.getElementById('suggestions');
+
+    // 1. Listen for typing to show suggestions
+    cityInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const query = cityInput.value.trim();
+
+        if (query.length < 2) {
+            suggestionsBox.style.display = 'none';
+            return;
+        }
+
+        debounceTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`https://api.myquran.com/v2/sholat/kota/cari/${query}`);
+                const json = await res.json();
+
+                if (json.status && json.data.length > 0) {
+                    renderSuggestions(json.data);
+                } else {
+                    suggestionsBox.style.display = 'none';
+                }
+            } catch (e) { console.error("Search error"); }
+        }, 300); // Wait 300ms after user stops typing
+    });
+
+    function renderSuggestions(cities) {
+        suggestionsBox.innerHTML = cities.map(city => `
+            <div class="suggestion-item" onclick="selectCity('${city.id}', '${city.lokasi}')">
+                ${city.lokasi}
+            </div>
+        `).join('');
+        suggestionsBox.style.display = 'block';
     }
 
-    async function searchAndFetch() {
-        const query = document.getElementById('cityInput').value.trim();
-        if (!query) return;
+    function selectCity(id, name) {
+        cityInput.value = name;
+        selectedCityId = id;
+        suggestionsBox.style.display = 'none';
+        fetchJadwal(id);
+    }
 
-        showStatus("Mencari kota...", "loading");
-        contentEl.style.display = 'none';
+    // 2. Fetch the actual schedule from your Netlify Function
+    async function fetchJadwal(id) {
+        const content = document.getElementById('mainContent');
+        const status = document.getElementById('status');
 
+        status.style.display = 'none';
         try {
-            // 1. Find City ID from the public API
-            const searchUrl = `https://api.myquran.com/v2/sholat/kota/cari/${encodeURIComponent(query)}`;
-            const searchRes = await fetch(searchUrl);
-            const searchData = await searchRes.json();
+            // Using the path to your index.js function
+            const res = await fetch(`/.netlify/functions/index?city=${id}`);
+            if (!res.ok) throw new Error("Gagal mengambil data dari server.");
 
-            if (!searchData.status || !searchData.data || searchData.data.length === 0) {
-                showStatus("Kota tidak ditemukan. Coba nama lain.", "error");
-                return;
-            }
+            const data = await res.json();
 
-            const cityId = searchData.data[0].id;
-
-            // 2. Fetch Schedule using YOUR Netlify Function (index.js)
-            // We try the redirect path first, then fallback to direct path
-            let data;
-            try {
-                const res = await fetch(`/api/jadwal?city=${cityId}`);
-                if (!res.ok) throw new Error();
-                data = await res.json();
-            } catch (err) {
-                // FALLBACK: Directly calling the function name index.js
-                const fallback = await fetch(`/.netlify/functions/index?city=${cityId}`);
-                if (!fallback.ok) throw new Error("Gagal memuat jadwal dari server.");
-                data = await fallback.json();
-            }
-
-            // 3. Populate UI
             document.getElementById('cityName').innerText = data.lokasi;
             document.getElementById('dateDisplay').innerText = data.jadwal.tanggal;
 
-            const prayerList = ['imsak', 'subuh', 'terbit', 'dhuha', 'dzuhur', 'ashar', 'maghrib', 'isya'];
-            const container = document.getElementById('prayerTimes');
-
-            container.innerHTML = prayerList.map(p => `
+            const list = ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+            document.getElementById('prayerTimes').innerHTML = list.map(p => `
                 <div class="time-row">
                     <span class="label">${p}</span>
                     <span class="time">${data.jadwal[p]}</span>
                 </div>
             `).join('');
 
-            statusEl.style.display = 'none';
-            contentEl.style.display = 'block';
-
+            content.style.display = 'block';
         } catch (e) {
-            console.error(e);
-            showStatus(`Error: ${e.message || "Gagal mengambil data"}`, "error");
+            status.innerText = e.message;
+            status.className = "status-msg error";
         }
     }
 
-    // Auto-load Jakarta on start
-    window.onload = searchAndFetch;
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-container')) suggestionsBox.style.display = 'none';
+    });
+
+    // Load initial data
+    window.onload = () => fetchJadwal(selectedCityId);
 </script>
 
 </body>
