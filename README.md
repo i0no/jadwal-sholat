@@ -1,11 +1,3 @@
----
-title: Jadwal Sholat Indonesia Modern
-description: Aplikasi jadwal sholat real-time dengan fitur autocomplete, countdown, dan deteksi zona waktu otomatis.
-tags: [javascript, netlify-functions, api, pwa, islam]
-version: 1.0.0
-license: MIT
----
-
 # 🕋 Jadwal Sholat Indonesia Modern
 
 Aplikasi web responsif untuk memantau jadwal sholat di seluruh kota di Indonesia secara *real-time*. Proyek ini menggunakan arsitektur **Serverless** untuk memastikan performa tinggi dan data yang akurat.
