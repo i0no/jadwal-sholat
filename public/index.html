@@ -6,35 +6,27 @@
     <title>Jadwal Sholat Live</title>
     <style>
         :root { --primary: #1b5e20; --accent: #ffd600; --bg: #f4f7f6; }
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .card { background: white; padding: 25px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 420px; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
+        .card { background: white; padding: 25px; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); width: 100%; max-width: 420px; margin-bottom: 20px; }
 
-        /* Live Clock Styling */
+        /* Clock Banner */
         .clock-banner { text-align: center; background: var(--primary); color: white; padding: 20px; border-radius: 18px; margin-bottom: 20px; }
         #liveClock { font-size: 2.8rem; font-weight: 800; line-height: 1; }
         #liveDate { font-size: 0.9rem; opacity: 0.8; margin-bottom: 8px; }
         .countdown { font-size: 0.85rem; background: rgba(255,255,255,0.15); padding: 5px 15px; border-radius: 20px; display: inline-block; margin-top: 10px; }
 
-        /* Search Layout */
+        /* Search Section */
         .search-container { position: relative; margin-bottom: 20px; }
-        .input-group { display: flex; gap: 8px; }
-        input { flex: 1; padding: 12px 15px; border: 2px solid #eee; border-radius: 12px; outline: none; font-size: 1rem; }
+        input { width: 100%; padding: 12px 15px; border: 2px solid #eee; border-radius: 12px; outline: none; font-size: 1rem; box-sizing: border-box; }
         input:focus { border-color: var(--primary); }
-
-        #suggestions {
-            position: absolute; top: 100%; left: 0; right: 0;
-            background: white; border: 1px solid #eee; border-radius: 12px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1); z-index: 99; display: none;
-            max-height: 200px; overflow-y: auto;
-        }
+        #suggestions { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #eee; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); z-index: 99; display: none; max-height: 200px; overflow-y: auto; }
         .suggestion-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #f9f9f9; }
         .suggestion-item:hover { background: #f1f8e9; }
 
+        /* Content Section */
         .city-info { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; border-bottom: 2px solid #f4f4f4; padding-bottom: 10px; }
         .city-info h2 { margin: 0; color: var(--primary); font-size: 1.2rem; }
         .tz-badge { font-size: 0.7rem; font-weight: 800; background: #eee; padding: 3px 8px; border-radius: 5px; color: #666; }
-
-        /* Prayer Row Styling */
         .time-row { display: flex; justify-content: space-between; padding: 14px 18px; margin-bottom: 8px; border-radius: 12px; background: #fafafa; transition: transform 0.2s; }
         .active-prayer { background: #fffde7; border: 1px solid var(--accent); transform: scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .label { font-weight: 600; color: #666; text-transform: uppercase; font-size: 0.8rem; }
@@ -57,9 +49,7 @@
     </div>
 
     <div class="search-container">
-        <div class="input-group">
-            <input type="text" id="cityInput" placeholder="Cari kota (cth: Jakarta, Jayapura...)" autocomplete="off">
-        </div>
+        <input type="text" id="cityInput" placeholder="Cari kota..." autocomplete="off">
         <div id="suggestions"></div>
     </div>
 
@@ -88,7 +78,6 @@
     const cityInput = document.getElementById('cityInput');
     const suggestionsBox = document.getElementById('suggestions');
 
-    // 1. Live Clock & Countdown
     function initClock() {
         setInterval(() => {
             const now = new Date();
@@ -98,7 +87,7 @@
             if (nextPrayerTime) {
                 const diff = nextPrayerTime - now;
                 if (diff <= 0) {
-                    findNextPrayer(currentSchedule); // Recalculate if time reached
+                    findNextPrayer(currentSchedule);
                 } else {
                     const h = Math.floor(diff / 3600000);
                     const m = Math.floor((diff % 3600000) / 60000);
@@ -109,7 +98,6 @@
         }, 1000);
     }
 
-    // 2. Automatic Timezone Detection
     function getAutoTZ() {
         const offset = new Date().getTimezoneOffset() / -60;
         if (offset === 7) return "WIB";
@@ -118,7 +106,6 @@
         return "GMT" + (offset >= 0 ? "+" : "") + offset;
     }
 
-    // 3. Search Autocomplete (All Cities)
     cityInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
         const query = cityInput.value.trim();
@@ -146,21 +133,17 @@
         fetchJadwal(id);
     }
 
-    // 4. Fetch & Process Schedule
     async function fetchJadwal(id) {
         try {
             const res = await fetch(`/.netlify/functions/index?city=${id}`);
             const data = await res.json();
-
             currentSchedule = data.jadwal;
             document.getElementById('cityNameDisplay').innerText = data.lokasi;
             document.getElementById('tzLabel').innerText = getAutoTZ();
-
             renderSchedule(data.jadwal);
             findNextPrayer(data.jadwal);
-
             document.getElementById('mainContent').style.display = 'block';
-        } catch (e) { alert("Gagal mengambil data."); }
+        } catch (e) { console.error("API error"); }
     }
 
     function renderSchedule(j) {
@@ -182,14 +165,12 @@
             const [hh, mm] = j[p].split(':');
             const pDate = new Date();
             pDate.setHours(parseInt(hh), parseInt(mm), 0);
-
             if (pDate > now) {
                 found = { name: p, date: pDate };
                 break;
             }
         }
 
-        // Handle case after Isya (points to Subuh tomorrow)
         if (!found) {
             const [hh, mm] = j['subuh'].split(':');
             const tomorrow = new Date();
@@ -209,7 +190,7 @@
 
     window.onload = () => {
         initClock();
-        fetchJadwal("1301"); // Initial load Jakarta
+        fetchJadwal("1301");
     };
 </script>
 </body>
