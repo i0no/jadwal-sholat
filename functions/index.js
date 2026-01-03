@@ -7,7 +7,6 @@ exports.handler = async (event) => {
   const month = now.getMonth() + 1;
   const day = String(now.getDate()).padStart(2, '0');
 
-  // Official public token
   const KEMENAG_TOKEN = "af7c667b9819378c0bddb3baede9525b";
 
   try {
@@ -22,39 +21,44 @@ exports.handler = async (event) => {
       method: 'POST',
       body: params,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                                 'Accept': 'application/json, text/javascript, */*; q=0.01',
+                                 'X-Requested-With': 'XMLHttpRequest', // Kemenag looks for this header
                                  'Origin': 'https://bimasislam.kemenag.go.id',
                                  'Referer': 'https://bimasislam.kemenag.go.id/jadwalshalat'
       }
     });
 
-    if (!response.ok) {
-      throw new Error(`Kemenag Server returned ${response.status}`);
+    const rawText = await response.text();
+
+    // Debugging: If Kemenag sends HTML (error page) instead of JSON
+    if (rawText.includes("<html>")) {
+      return {
+        statusCode: 403,
+        body: JSON.stringify({ error: "Blocked by Kemenag Firewall", raw: rawText.substring(0, 100) })
+      };
     }
 
-    const result = await response.json();
+    const result = JSON.parse(rawText);
     const todayKey = `${year}-${String(month).padStart(2, '0')}-${day}`;
     const todayData = result.data ? result.data[todayKey] : null;
 
     if (!todayData) {
-      return { statusCode: 404, body: JSON.stringify({ error: "Data not found for today" }) };
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: "Data not found", availableKeys: Object.keys(result.data || {}) })
+      };
     }
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tanggal: todayKey,
-        jadwal: todayData
-      })
+      body: JSON.stringify({ tanggal: todayKey, jadwal: todayData })
     };
   } catch (error) {
-    console.error("Internal Error:", error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Connection Failed", message: error.message })
+      body: JSON.stringify({ error: "Server Crash", message: error.message })
     };
   }
 };
