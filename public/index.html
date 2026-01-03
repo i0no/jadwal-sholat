@@ -3,41 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jadwal Sholat - Bimas Islam RI</title>
+    <title>Jadwal Sholat Resmi Kemenag</title>
     <style>
-        :root { --green: #1a5d1a; --light: #f4f4f4; }
-        body { font-family: sans-serif; background: var(--light); padding: 20px; display: flex; justify-content: center; }
-        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
-        .search-area { position: relative; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        #suggestions { position: absolute; background: white; width: 100%; border: 1px solid #ddd; z-index: 10; display: none; max-height: 200px; overflow-y: auto; }
-        .city-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-        .city-item:hover { background: #f0f0f0; }
-        .time-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .label { font-weight: bold; color: #555; text-transform: uppercase; }
-        .time { font-weight: 900; color: var(--green); }
-        .footer { font-size: 0.7rem; color: #999; text-align: center; margin-top: 20px; }
-        .error { color: red; text-align: center; margin-top: 10px; font-size: 0.8rem; }
+        :root { --green: #1a5d1a; --bg: #f4f4f4; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); padding: 20px; display: flex; justify-content: center; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 360px; }
+        h3 { text-align: center; color: var(--green); margin-bottom: 5px; }
+        .date-info { text-align: center; font-size: 0.8rem; color: #666; margin-bottom: 20px; }
+        .input-area { position: relative; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; outline: none; box-sizing: border-box; }
+        input:focus { border-color: var(--green); }
+        #suggestions { position: absolute; background: white; width: 100%; border: 1px solid #ddd; z-index: 10; display: none; max-height: 200px; overflow-y: auto; border-radius: 0 0 8px 8px; }
+        .city-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        .city-item:hover { background: #f0fdf0; }
+        .time-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f1f1; }
+        .label { font-weight: bold; color: #555; text-transform: uppercase; font-size: 0.8rem; }
+        .time { font-weight: 900; color: #000; font-size: 1.1rem; }
+        .loader { text-align: center; color: var(--green); display: none; font-weight: bold; padding: 10px; }
+        .error { color: #e74c3c; text-align: center; font-size: 0.85rem; padding: 10px; display: none; }
+        .footer { font-size: 0.7rem; color: #999; text-align: center; margin-top: 20px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3 id="cityLabel" style="text-align:center; color: var(--green);">DKI JAKARTA</h3>
+    <h3 id="cityLabel">DKI JAKARTA</h3>
+    <div id="dateDisplay" class="date-info">-- -- ----</div>
 
-    <div class="search-area">
+    <div class="input-area">
         <input type="text" id="cityInput" placeholder="Ketik nama kota..." autocomplete="off">
         <div id="suggestions"></div>
     </div>
 
+    <div id="loader" class="loader">Mengambil Data Kemenag...</div>
     <div id="errorBox" class="error"></div>
     <div id="times"></div>
 
-    <div class="footer">Data: Official Bimas Islam Kemenag RI</div>
+    <div class="footer">
+        <b>SUMBER RESMI:</b> bimasislam.kemenag.go.id<br>
+        (Fetched via Client-Side Bridge)
+    </div>
 </div>
 
 <script>
-    // These are official Kemenag Codes (ProvID + CityID)
     const CITIES = [
         { id: "1301", name: "DKI JAKARTA" },
         { id: "1210", name: "KOTA BANDUNG" },
@@ -47,8 +55,7 @@
         { id: "3171", name: "KOTA MAKASSAR" },
         { id: "1609", name: "KOTA YOGYAKARTA" },
         { id: "1211", name: "KOTA DEPOK" },
-        { id: "1202", name: "KOTA BOGOR" },
-        { id: "1708", name: "KOTA MALANG" }
+        { id: "1202", name: "KOTA BOGOR" }
     ];
 
     const input = document.getElementById('cityInput');
@@ -62,30 +69,65 @@
         suggest.style.display = matches.length ? 'block' : 'none';
     });
 
-    async function getTimes(id, name) {
-        input.value = name;
+    async function getTimes(cityId, cityName) {
+        input.value = cityName;
         suggest.style.display = 'none';
-        document.getElementById('errorBox').innerText = "";
+
+        const loader = document.getElementById('loader');
+        const errorBox = document.getElementById('errorBox');
+        const timesDiv = document.getElementById('times');
+
+        loader.style.display = 'block';
+        errorBox.style.display = 'none';
+        timesDiv.innerHTML = "";
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayKey = `${year}-${String(month).padStart(2, '0')}-${day}`;
 
         try {
-            const res = await fetch(`/.netlify/functions/index?city=${id}`);
-            const data = await res.json();
+            // We use a CORS Proxy to bypass the browser block and the Netlify block
+            // This sends the request from YOUR browser, not Netlify's server
+            const proxyUrl = "https://corsproxy.io/?";
+            const targetUrl = "https://bimasislam.kemenag.go.id/apiv1/getShalatJadwal";
 
-            if (data.error) {
-                document.getElementById('errorBox').innerText = data.error;
-                return;
-            }
+            const params = new URLSearchParams();
+            params.append('param_prov', cityId.substring(0, 2));
+            params.append('param_kabko', cityId);
+            params.append('param_thn', year);
+            params.append('param_bln', month);
+            params.append('param_token', "af7c667b9819378c0bddb3baede9525b");
 
-            document.getElementById('cityLabel').innerText = name;
+            const res = await fetch(proxyUrl + encodeURIComponent(targetUrl), {
+                method: 'POST',
+                body: params,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+            });
+
+            const result = await res.json();
+            const todayData = result.data[todayKey];
+
+            if (!todayData) throw new Error("Data tidak ditemukan");
+
+            document.getElementById('cityLabel').innerText = cityName;
+            document.getElementById('dateDisplay').innerText = todayKey;
+
             const prayers = ['imsak', 'subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'];
-            document.getElementById('times').innerHTML = prayers.map(p => `
+            timesDiv.innerHTML = prayers.map(p => `
                 <div class="time-row">
                     <span class="label">${p}</span>
-                    <span class="time">${data.jadwal[p]}</span>
+                    <span class="time">${todayData[p]}</span>
                 </div>
             `).join('');
+
         } catch (e) {
-            document.getElementById('errorBox').innerText = "Koneksi ke Kemenag Terputus.";
+            console.error(e);
+            errorBox.innerText = "Gagal mengambil data langsung. Pastikan koneksi internet stabil.";
+            errorBox.style.display = 'block';
+        } finally {
+            loader.style.display = 'none';
         }
     }
 
