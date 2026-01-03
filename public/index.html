@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Sholat</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; background: #fafafa; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 320px; }
+        h1 { font-size: 1.25rem; margin-bottom: 1.5rem; text-align: center; color: #1a1a1a; }
+        .time-row { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0; }
+        .time-row:last-child { border-bottom: none; }
+        .label { color: #666; font-weight: 500; }
+        .time { color: #000; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1 id="city">Memuat...</h1>
+    <div id="times"></div>
+</div>
+
+<script>
+    async function getSholat() {
+        try {
+            // Using the redirect path from netlify.toml
+            const res = await fetch('/api/jadwal');
+            const data = await res.json();
+            
+            document.getElementById('city').innerText = data.lokasi;
+            
+            const schedule = data.jadwal;
+            const targetTimes = ['subuh', 'dzuhur', 'ashar', 'maghrib', 'isya'];
+            
+            document.getElementById('times').innerHTML = targetTimes.map(t => `
+                <div class="time-row">
+                    <span class="label">${t.toUpperCase()}</span>
+                    <span class="time">${schedule[t]}</span>
+                </div>
+            `).join('');
+        } catch (err) {
+            document.getElementById('city').innerText = "Gagal memuat";
+        }
+    }
+    getSholat();
+</script>
+
+</body>
+</html>
